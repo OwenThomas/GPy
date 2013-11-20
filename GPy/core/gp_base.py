@@ -4,7 +4,7 @@ from ..util.plot import gpplot, Tango, x_frame1D, x_frame2D
 import pylab as pb
 from GPy.core.model import Model
 import warnings
-from ..likelihoods import Gaussian, Gaussian_Mixed_Noise
+#from ..likelihoods import Gaussian, Gaussian_Mixed_Noise
 
 class GPBase(Model):
     """
@@ -73,16 +73,8 @@ class GPBase(Model):
         :type noise_model: integer.
         :returns: Ysim: set of simulations, a Numpy array (N x samples).
         """
-        Ysim = self.posterior_samples_f(X, size, which_parts=which_parts, full_cov=True)
-        if isinstance(self.likelihood,Gaussian):
-            noise_std = np.sqrt(self.likelihood._get_params())
-            Ysim += np.random.normal(0,noise_std,Ysim.shape)
-        elif isinstance(self.likelihood,Gaussian_Mixed_Noise):
-            assert noise_model is not None, "A noise model must be specified."
-            noise_std = np.sqrt(self.likelihood._get_params()[noise_model])
-            Ysim += np.random.normal(0,noise_std,Ysim.shape)
-        else:
-            Ysim = self.likelihood.noise_model.samples(Ysim)
+        Ysim = self.posterior_samples_f(X, size, which_parts=which_parts)
+        Ysim = self.likelihood.noise_model.samples(Ysim)
 
         return Ysim
 
@@ -104,7 +96,7 @@ class GPBase(Model):
             levels=20, samples=0, fignum=None, ax=None, resolution=None,
             plot_raw=False,
             linecol=Tango.colorsHex['darkBlue'],fillcol=Tango.colorsHex['lightBlue']):
-        """ 
+        """
         Plot the posterior of the GP.
           - In one dimension, the function is plotted with a shaded region identifying two standard deviations.
           - In two dimsensions, a contour-plot shows the mean predicted function
@@ -182,7 +174,10 @@ class GPBase(Model):
 
             #optionally plot some samples
             if samples: #NOTE not tested with fixed_inputs
-                Ysim = self.posterior_samples(Xgrid, samples, which_parts=which_parts, full_cov=True)
+                if plot_raw:
+                    Ysim = self.posterior_samples_f(Xgrid, samples, which_parts=which_parts)
+                else:
+                    Ysim = self.posterior_samples(Xgrid, samples, which_parts=which_parts)
                 for yi in Ysim.T:
                     ax.plot(Xnew, yi[:,None], Tango.colorsHex['darkBlue'], linewidth=0.25)
                     #ax.plot(Xnew, yi[:,None], marker='x', linestyle='--',color=Tango.colorsHex['darkBlue']) #TODO apply this line for discrete outputs.
