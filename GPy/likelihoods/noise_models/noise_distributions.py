@@ -35,6 +35,12 @@ class NoiseDistribution(object):
 
         self.log_concave = True
 
+    def check_data(self,data):
+        """
+        Checks if data values are appropiate for the noise distribution
+        """
+        pass
+
     def _get_params(self):
         return np.zeros(0)
 
@@ -46,16 +52,6 @@ class NoiseDistribution(object):
 
     def _gradients(self,partial):
         return np.zeros(0)
-
-    def _preprocess_values(self,Y):
-        """
-        In case it is needed, this function assess the output values or makes any pertinent transformation on them.
-
-        :param Y: observed output
-        :type Y: Nx1 numpy.darray
-
-        """
-        return Y
 
     def _moments_match_analytical(self,obs,tau,v):
         """
@@ -153,9 +149,11 @@ class NoiseDistribution(object):
         :param sigma: standard deviation of posterior
 
         """
+        #import ipdb; ipdb.set_trace()
         def int_mean(f,m,v):
             return self._mean(f)*np.exp(-(0.5/v)*np.square(f - m))
-        scaled_mean = [quad(int_mean, -np.inf, np.inf,args=(mj,s2j))[0] for mj,s2j in zip(mu,variance)]
+        #scaled_mean = [quad(int_mean, -np.inf, np.inf,args=(mj,s2j))[0] for mj,s2j in zip(mu,variance)]
+        scaled_mean = [quad(int_mean, mj-6*np.sqrt(s2j), mj+6*np.sqrt(s2j), args=(mj,s2j))[0] for mj,s2j in zip(mu,variance)]
         mean = np.array(scaled_mean)[:,None] / np.sqrt(2*np.pi*(variance))
 
         return mean
@@ -178,7 +176,7 @@ class NoiseDistribution(object):
         # E( V(Y_star|f_star) )
         def int_var(f,m,v):
             return self._variance(f)*np.exp(-(0.5/v)*np.square(f - m))
-        scaled_exp_variance = [quad(int_var, -np.inf, np.inf,args=(mj,s2j))[0] for mj,s2j in zip(mu,variance)]
+        scaled_exp_variance = [quad(int_var, mj-6*np.sqrt(s2j), mj+6*np.sqrt(s2j), args=(mj,s2j))[0] for mj,s2j in zip(mu,variance)]
         exp_var = np.array(scaled_exp_variance)[:,None] / normalizer
 
         #V( E(Y_star|f_star) ) =  E( E(Y_star|f_star)**2 ) - E( E(Y_star|f_star) )**2
@@ -191,7 +189,7 @@ class NoiseDistribution(object):
         #E( E(Y_star|f_star)**2 )
         def int_pred_mean_sq(f,m,v,predictive_mean_sq):
             return self._mean(f)**2*np.exp(-(0.5/v)*np.square(f - m))
-        scaled_exp_exp2 = [quad(int_pred_mean_sq, -np.inf, np.inf,args=(mj,s2j,pm2j))[0] for mj,s2j,pm2j in zip(mu,variance,predictive_mean_sq)]
+        scaled_exp_exp2 = [quad(int_pred_mean_sq, mj-6*np.sqrt(s2j), mj+6*np.sqrt(s2j), args=(mj,s2j,pm2j))[0] for mj,s2j,pm2j in zip(mu,variance,predictive_mean_sq)]
         exp_exp2 = np.array(scaled_exp_exp2)[:,None] / normalizer
 
         var_exp = exp_exp2 - predictive_mean_sq
@@ -394,7 +392,6 @@ class NoiseDistribution(object):
         :type sampling: Boolean
 
         """
-
         if sampling:
             #Get gp_samples f* using posterior mean and variance
             if not full_cov:
