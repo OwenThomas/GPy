@@ -35,15 +35,16 @@ class Gaussian(NoiseDistribution):
         self.variance = float(p)
         self.I = np.eye(self.N)
         self.covariance_matrix = self.I * self.variance
-        self.Ki = self.I*(1.0 / self.variance)
+        self.Ki = self.I*(1.0 / self.variance) #TODO check if this is necessary
         #self.ln_det_K = np.sum(np.log(np.diag(self.covariance_matrix)))
         self.ln_det_K = self.N*np.log(self.variance)
 
     def _gradients(self,partial):
-        return np.zeros(1)
-        #return np.sum(partial)
+        #return np.zeros(1)
+        #NOTE this does not work for EP yet
+        return np.sum(partial)
 
-    def _preprocess_values(self,Y):
+    def _process_values(self,Y):
         """
         Check if the values of the observations correspond to the values
         assumed by the likelihood function.
@@ -296,3 +297,63 @@ class Gaussian(NoiseDistribution):
         gp = gp.flatten()
         Ysim = np.array([np.random.normal(self.gp_link.transf(gpj), scale=np.sqrt(self.variance), size=1) for gpj in gp])
         return Ysim.reshape(orig_shape)
+
+    def log_predictive_density(self, y_test, mu_star, var_star):
+        """
+        Calculation of the log predictive density
+
+        .. math:
+            p(y_{*}|D) = p(y_{*}|f_{*})p(f_{*}|\mu_{*}\\sigma^{2}_{*})
+
+        :param y_test: test observations (y_{*})
+        :type y_test: (Nx1) array
+        :param mu_star: predictive mean of gaussian p(f_{*}|mu_{*}, var_{*})
+        :type mu_star: (Nx1) array
+        :param var_star: predictive variance of gaussian p(f_{*}|mu_{*}, var_{*})
+        :type var_star: (Nx1) array
+        """
+        #return -0.5*np.log(2*np.pi) -0.5*np.log(var_star + self._variance) -0.5*(np.square(y_test - mu_star))/(var_star + self._variance)
+        return -0.5*np.log(2*np.pi) -0.5*np.log(var_star + self.variance) -0.5*(np.square(y_test - mu_star))/(var_star + self.variance)
+
+
+    def predictive_values(self, mu, var, full_cov=False, sampling=False, num_samples=10000):
+        """
+        Compute  mean, variance and conficence interval (percentiles 5 and 95) of the  prediction.
+
+        :param mu: mean of the latent variable, f, of posterior
+        :param var: variance of the latent variable, f, of posterior
+        :param full_cov: whether to use the full covariance or just the diagonal
+        :type full_cov: Boolean
+        :param num_samples: number of samples to use in computing quantiles and
+                            possibly mean variance
+        :type num_samples: integer
+        :param sampling: Whether to use samples for mean and variances anyway
+        :type sampling: Boolean
+
+        """
+        if sampling:
+            #Get gp_samples f* using posterior mean and variance
+            if not full_cov:
+                gp_samples = np.random.multivariate_normal(mu.flatten(), np.diag(var.flatten()),
+                                                            size=num_samples).T
+            else:
+                gp_samples = np.random.multivariate_normal(mu.flatten(), var,
+                                                               size=num_samples).T
+            #Push gp samples (f*) through likelihood to give p(y*|f*)
+            samples = self.samples(gp_samples)
+            axis=-1
+
+            #Calculate mean, variance and precentiles from samples
+            print "WARNING: Using sampling to calculate mean, variance and predictive quantiles."
+            pred_mean = np.mean(samples, axis=axis)[:,None]
+            pred_var = np.var(samples, axis=axis)[:,None]
+            q1 = np.percentile(samples, 2.5, axis=axis)[:,None]
+            q3 = np.percentile(samples, 97.5, axis=axis)[:,None]
+
+        else:
+            pred_mean = self.predictive_mean(mu, var)
+            pred_var = self.predictive_variance(mu, var, pred_mean)
+            q1 = pred_mean - 2.*np.sqrt(pred_var)
+            q3 = pred_mean + 2.*np.sqrt(pred_var)
+
+        return pred_mean, pred_var, q1, q3
