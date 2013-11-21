@@ -450,9 +450,21 @@ def prod(k1,k2,tensor=False):
 def symmetric(k):
     """
     Construct a symmetric kernel from an existing kernel
+
+    The symmetric kernel works by adding two GP functions together, and computing the overall covariance.
+
+    Let f ~ GP(x | 0, k(x, x')). Now let g = f(x) + f(-x).
+
+    It's easy to see that g is a symmetric function: g(x) = g(-x).
+
+    by construction, g, is a gaussian Process with mean 0 and covariance
+
+    k(x, x') + k(-x, x') + k(x, -x') + k(-x, -x')
+
+    This constructor builds a covariance function of this form from the initial kernel
     """
     k_ = k.copy()
-    k_.parts = [symmetric.Symmetric(p) for p in k.parts]
+    k_.parts = [parts.symmetric.Symmetric(p) for p in k.parts]
     return k_
 
 def coregionalize(output_dim,rank=1, W=None, kappa=None):
@@ -587,4 +599,21 @@ def ODE_1(input_dim=1, varianceU=1.,  varianceY=1., lengthscaleU=None,  lengthsc
 
     """
     part = parts.ODE_1.ODE_1(input_dim, varianceU, varianceY, lengthscaleU, lengthscaleY)
+    return kern(input_dim, [part])
+
+def ODE_UY(input_dim=2, varianceU=1.,  varianceY=1., lengthscaleU=None,  lengthscaleY=None):
+    """
+    kernel resultiong from a first order ODE with OU driving GP
+    :param input_dim: the number of input dimension, has to be equal to one
+    :type input_dim: int
+    :param input_lengthU: the number of input U length
+    :param varianceU: variance of the driving GP
+    :type varianceU: float
+    :param varianceY: 'variance' of the transfer function
+    :type varianceY: float
+    :param lengthscaleY: 'lengthscale' of the transfer function
+    :type lengthscaleY: float
+    :rtype: kernel object
+    """
+    part = parts.ODE_UY.ODE_UY(input_dim, varianceU, varianceY, lengthscaleU, lengthscaleY)
     return kern(input_dim, [part])
