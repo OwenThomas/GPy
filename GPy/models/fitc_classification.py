@@ -4,7 +4,8 @@
 
 import numpy as np
 from ..core import FITC
-from .. import likelihoods
+#from .. import likelihoods
+from ..likelihoods import likelihood_constructors
 from .. import kern
 from ..likelihoods import likelihood
 
@@ -31,8 +32,9 @@ class FITCClassification(FITC):
             kernel = kern.rbf(X.shape[1]) + kern.white(X.shape[1],1e-3)
 
         if likelihood is None:
-            noise_model = likelihoods.bernoulli()
-            likelihood = likelihoods.EP(Y, noise_model)
+            #noise_model = likelihoods.bernoulli()
+            #likelihood = likelihoods.EP(Y, noise_model)
+            likelihood = likelihood_constructors.bernoulli(Y)
         elif Y is not None:
             if not all(Y.flatten() == likelihood.data.flatten()):
                 raise Warning, 'likelihood.data and Y are different.'

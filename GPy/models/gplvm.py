@@ -10,7 +10,8 @@ from ..core import Model
 from ..util.linalg import pdinv, PCA
 from ..core.priors import Gaussian as Gaussian_prior
 from ..core import GP
-from ..likelihoods import Gaussian
+#from ..likelihoods import Gaussian
+from ..likelihoods import likelihood_constructors
 from .. import util
 from GPy.util import plot_latent
 
@@ -32,7 +33,8 @@ class GPLVM(GP):
             X = self.initialise_latent(init, input_dim, Y)
         if kernel is None:
             kernel = kern.rbf(input_dim, ARD=input_dim > 1) + kern.bias(input_dim, np.exp(-2))
-        likelihood = Gaussian(Y, normalize=normalize_Y, variance=np.exp(-2.))
+        #likelihood = Gaussian(Y, normalize=normalize_Y, variance=np.exp(-2.))
+        likelihood = likelihood_constructors._gaussian(Y,normalize=True,variance=np.exp(-2.))
         GP.__init__(self, X, likelihood, kernel, normalize_X=False)
         self.set_prior('.*X', Gaussian_prior(0, 1))
         self.ensure_default_constraints()

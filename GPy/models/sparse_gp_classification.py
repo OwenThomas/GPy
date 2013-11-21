@@ -4,7 +4,7 @@
 
 import numpy as np
 from ..core import SparseGP
-from .. import likelihoods
+from ..likelihoods import likelihood_constructors
 from .. import kern
 from ..likelihoods import likelihood
 
@@ -26,13 +26,16 @@ class SparseGPClassification(SparseGP):
 
     """
 
-    def __init__(self, X, Y=None, likelihood=None, kernel=None, normalize_X=False, normalize_Y=False, Z=None, num_inducing=10):
+    def __init__(self, X, Y=None, likelihood=None, kernel=None, normalize_X=False, normalize_Y=False, Z=None, num_inducing=10,approximation='EP'):
         if kernel is None:
-            kernel = kern.rbf(X.shape[1])# + kern.white(X.shape[1],1e-3)
+            kernel = kern.rbf(X.shape[1])
 
         if likelihood is None:
-            noise_model = likelihoods.bernoulli()
-            likelihood = likelihoods.EP(Y, noise_model)
+            if approximation == 'EP':
+                likelihood = likelihood_constructors.bernoulli(Y,approximation)
+            else:
+                raise NotImplementedError, 'Approximation not valid.'
+
         elif Y is not None:
             if not all(Y.flatten() == likelihood.data.flatten()):
                 raise Warning, 'likelihood.data and Y are different.'

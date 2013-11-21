@@ -5,7 +5,8 @@
 import numpy as np
 from ..util.warping_functions import *
 from ..core import GP
-from .. import likelihoods
+#from .. import likelihoods
+from ..likelihoods import likelihood_constructors
 from GPy.util.warping_functions import TanhWarpingFunction_d
 from GPy import kern
 
@@ -25,7 +26,8 @@ class WarpedGP(GP):
         self.has_uncertain_inputs = False
         self.Y_untransformed = Y.copy()
         self.predict_in_warped_space = False
-        likelihood = likelihoods.Gaussian(self.transform_data(), normalize=normalize_Y)
+        #likelihood = likelihoods.Gaussian(self.transform_data(), normalize=normalize_Y)
+        likelihood = likelihood_constructors._gaussian(self.transform_data(), normalize=normalize_Y)
 
         GP.__init__(self, X, likelihood, kernel, normalize_X=normalize_X)
         self._set_params(self._get_params())

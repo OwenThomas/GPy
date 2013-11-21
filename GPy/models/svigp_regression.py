@@ -3,7 +3,8 @@
 
 import numpy as np
 from ..core import SVIGP
-from .. import likelihoods
+#from .. import likelihoods
+from ..likelihoods import likelihood_constructors
 from .. import kern
 
 class SVIGPRegression(SVIGP):
@@ -38,7 +39,8 @@ class SVIGPRegression(SVIGP):
             assert Z.shape[1] == X.shape[1]
 
         # likelihood defaults to Gaussian
-        likelihood = likelihoods.Gaussian(Y, normalize=normalize_Y)
+        #likelihood = likelihoods.Gaussian(Y, normalize=normalize_Y)
+        likelihood = likelihood_constructors._gaussian(Y, normalize=normalize_Y)
 
         SVIGP.__init__(self, X, likelihood, kernel, Z, q_u=q_u, batchsize=batchsize)
         self.load_batch()

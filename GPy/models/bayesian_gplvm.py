@@ -3,7 +3,8 @@
 
 import numpy as np
 from ..core import SparseGP
-from ..likelihoods import Gaussian
+#from ..likelihoods import Gaussian
+from ..likelihoods import likelihood_constructors
 from .. import kern
 import itertools
 from matplotlib.colors import colorConverter
@@ -28,7 +29,8 @@ class BayesianGPLVM(SparseGP, GPLVM):
     def __init__(self, likelihood_or_Y, input_dim, X=None, X_variance=None, init='PCA', num_inducing=10,
                  Z=None, kernel=None, **kwargs):
         if type(likelihood_or_Y) is np.ndarray:
-            likelihood = Gaussian(likelihood_or_Y)
+            #likelihood = Gaussian(likelihood_or_Y)
+            likelihood = likelihood_constructors._gaussian(likelihood_or_Y)
         else:
             likelihood = likelihood_or_Y
 

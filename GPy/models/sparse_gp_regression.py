@@ -4,7 +4,8 @@
 
 import numpy as np
 from ..core import SparseGP
-from .. import likelihoods
+from ..likelihoods import likelihood_constructors
+#from .. import likelihoods
 from .. import kern
 
 class SparseGPRegression(SparseGP):
@@ -43,7 +44,7 @@ class SparseGPRegression(SparseGP):
             assert Z.shape[1] == X.shape[1]
 
         # likelihood defaults to Gaussian
-        likelihood = likelihoods.Gaussian(Y, normalize=normalize_Y)
+        likelihood = likelihood_constructors._gaussian(Y,approximation=None)
 
         SparseGP.__init__(self, X, likelihood, kernel, Z=Z, normalize_X=normalize_X, X_variance=X_variance)
         self.ensure_default_constraints()

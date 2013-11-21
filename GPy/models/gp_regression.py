@@ -4,7 +4,7 @@
 
 import numpy as np
 from ..core import GP
-from .. import likelihoods
+from ..likelihoods import likelihood_constructors
 from .. import kern
 
 class GPRegression(GP):
@@ -25,12 +25,12 @@ class GPRegression(GP):
 
     """
 
-    def __init__(self, X, Y, kernel=None, normalize_X=False, normalize_Y=False, likelihood=None):
+    def __init__(self, X, Y=None, kernel=None, normalize_X=False, normalize_Y=False, likelihood=None):
         if kernel is None:
             kernel = kern.rbf(X.shape[1])
 
         if likelihood is None:
-            likelihood = likelihoods.Gaussian(Y, normalize=normalize_Y)
+            likelihood = likelihood_constructors._gaussian(Y,approximation=None)
 
         GP.__init__(self, X, likelihood, kernel, normalize_X=normalize_X)
         self.ensure_default_constraints()
