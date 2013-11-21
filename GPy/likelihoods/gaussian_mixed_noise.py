@@ -5,11 +5,11 @@
 import numpy as np
 from scipy import stats
 from ..util.linalg import pdinv,mdot,jitchol,chol_inv,DSYR,tdot,dtrtrs
-from likelihood import likelihood
+from likelihood import Likelihood
 from . import Gaussian
 
 
-class Gaussian_Mixed_Noise(likelihood):
+class Gaussian_Mixed_Noise(Likelihood):
     """
     Gaussian Likelihood for multiple outputs
 

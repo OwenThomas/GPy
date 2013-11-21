@@ -5,9 +5,9 @@
 import numpy as np
 from scipy import stats
 from ..util.linalg import pdinv,mdot,jitchol,chol_inv,DSYR,tdot,dtrtrs
-from likelihood import likelihood
+from likelihood import Likelihood
 
-class EP_Mixed_Noise(likelihood):
+class EP_Mixed_Noise(Likelihood):
     def __init__(self,data_list,noise_model_list,epsilon=1e-3,power_ep=[1.,1.]):
         """
         Expectation Propagation
