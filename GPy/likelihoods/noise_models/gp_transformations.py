@@ -78,13 +78,12 @@ class Probit(GPTransformation):
         return std_norm_pdf(f)
 
     def d2transf_df2(self,f):
-        #FIXME
         return -f * std_norm_pdf(f)
 
     def d3transf_df3(self,f):
-        #FIXME
         f2 = f**2
-        return -(1/(np.sqrt(2*np.pi)))*np.exp(-0.5*(f2))*(1-f2)
+        std_pdf = std_norm_pdf(f)
+        return -std_pdf + f2*std_pdf
 
 class Log(GPTransformation):
     """
