@@ -23,7 +23,8 @@ def BGPLVM(seed=default_seed):
          + GPy.kern.white(Q, 0.01))
     K = k.K(X)
     Y = np.random.multivariate_normal(np.zeros(N), K, D).T
-    lik = Gaussian(Y, normalize=True)
+    #lik = Gaussian(Y, normalize=True)
+    lik = GPy.likelihoods.likelihood_constructors._gaussian(Y, normalize=True)
 
     # k = GPy.kern.rbf_inv(Q, .5, np.ones(Q) * 2., ARD=True) + GPy.kern.bias(Q) + GPy.kern.white(Q)
     # k = GPy.kern.linear(Q) + GPy.kern.bias(Q) + GPy.kern.white(Q, 0.00001)
@@ -89,11 +90,11 @@ def sparseGPLVM_oil(optimize=True, N=100, Q=6, num_inducing=15, max_iters=50):
     # m.plot_latent(labels=m.data_labels)
     return m
 
-def swiss_roll(optimize=True, N=1000, num_inducing=15, Q=4, sigma=.2, plot=False):
+def swiss_roll(optimize=True, num_samples=1000, num_inducing=15, Q=4, sigma=.2, plot=False):
     from GPy.util.datasets import swiss_roll_generated
     from GPy.core.transformations import logexp_clipped
 
-    data = swiss_roll_generated(N=N, sigma=sigma)
+    data = swiss_roll_generated(num_samples=num_samples, sigma=sigma)
     Y = data['Y']
     Y -= Y.mean()
     Y /= Y.std()
@@ -106,9 +107,9 @@ def swiss_roll(optimize=True, N=1000, num_inducing=15, Q=4, sigma=.2, plot=False
         iso = Isomap().fit(Y)
         X = iso.embedding_
         if Q > 2:
-            X = np.hstack((X, np.random.randn(N, Q - 2)))
+            X = np.hstack((X, np.random.randn(num_samples, Q - 2)))
     except ImportError:
-        X = np.random.randn(N, Q)
+        X = np.random.randn(num_samples, Q)
 
     if plot:
         from mpl_toolkits import mplot3d
@@ -124,7 +125,7 @@ def swiss_roll(optimize=True, N=1000, num_inducing=15, Q=4, sigma=.2, plot=False
 
 
     var = .5
-    S = (var * np.ones_like(X) + np.clip(np.random.randn(N, Q) * var ** 2,
+    S = (var * np.ones_like(X) + np.clip(np.random.randn(num_samples, Q) * var ** 2,
                                          - (1 - var),
                                          (1 - var))) + .001
     Z = np.random.permutation(X)[:num_inducing]
@@ -151,7 +152,8 @@ def BGPLVM_oil(optimize=True, N=200, Q=7, num_inducing=40, max_iters=1000, plot=
     kernel = GPy.kern.rbf_inv(Q, 1., [.1] * Q, ARD=True) + GPy.kern.bias(Q, np.exp(-2))
 
     Y = data['X'][:N]
-    Yn = Gaussian(Y, normalize=True)
+    #Yn = Gaussian(Y, normalize=True)
+    Yn = GPy.likelihoods.likelihood_constructors._gaussian(Y,normalize=True)
 #     Yn = Y - Y.mean(0)
 #     Yn /= Yn.std(0)
 
@@ -304,7 +306,8 @@ def mrd_simulation(optimize=True, plot=True, plot_sim=True, **kw):
     D1, D2, D3, N, num_inducing, Q = 60, 20, 36, 60, 6, 5
     slist, Slist, Ylist = _simulate_sincos(D1, D2, D3, N, num_inducing, Q, plot_sim)
 
-    likelihood_list = [Gaussian(x, normalize=True) for x in Ylist]
+    #likelihood_list = [Gaussian(x, normalize=True) for x in Ylist]
+    likelihood_list = [GPy.likelihoods.likelihood_constructors._gaussian(x, normalize=True) for x in Ylist]
 
     from GPy.models import mrd
     from GPy import kern
