@@ -12,45 +12,46 @@
 
 import numpy as np
 import scipy as sp
-from likelihood import likelihood
+from likelihood import Likelihood
 from ..util.linalg import mdot, jitchol, pddet, dpotrs
 from functools import partial as partial_func
 
-class Laplace(likelihood):
-    """Laplace approximation to a posterior"""
+class Laplace(Likelihood):
+    """
+    Laplace Approximation
 
-    def __init__(self, data, noise_model, extra_data=None):
-        """
-        Laplace Approximation
+    Find the moments \hat{f} and the hessian at this point
+    (using Newton-Raphson) of the unnormalised posterior
 
-        Find the moments \hat{f} and the hessian at this point
-        (using Newton-Raphson) of the unnormalised posterior
+    Compute the GP variables (i.e. generate some Y^{squiggle} and
+    z^{squiggle} which makes a gaussian the same as the laplace
+    approximation to the posterior, but normalised
 
-        Compute the GP variables (i.e. generate some Y^{squiggle} and
-        z^{squiggle} which makes a gaussian the same as the laplace
-        approximation to the posterior, but normalised
+    Arguments
+    ---------
 
-        Arguments
-        ---------
-
-        :param data: array of data the likelihood function is approximating
-        :type data: NxD
-        :param noise_model: likelihood function - subclass of noise_model
-        :type noise_model: noise_model
-        :param extra_data: additional data used by some likelihood functions,
-        """
+    :param data: array of data the likelihood function is approximating
+    :type data: NxD
+    :param noise_model: likelihood function - subclass of noise_model
+    :type noise_model: noise_model
+    :param extra_data: additional data used by some likelihood functions
+    :type extra_data: numpy array
+    """
+    def __init__(self,data,noise_model,normalize=False,offset=None,scale=None, extra_data=None):
         self.data = data
         self.noise_model = noise_model
         self.extra_data = extra_data
 
         #Inital values
         self.N, self.D = self.data.shape
-        self.is_heteroscedastic = True
-        self.Nparams = 0
+        self.is_heteroscedastic = False
+        self.Nparams = 0 #TODO this is not being used
         self.NORMAL_CONST = ((0.5 * self.N) * np.log(2 * np.pi))
 
         self.restart()
-        likelihood.__init__(self)
+        #likelihood.__init__(self)
+        super(Laplace, self).__init__(data,noise_model,normalize,offset,scale)
+        self.is_heteroscedastic = False
 
     def restart(self):
         """
@@ -64,37 +65,39 @@ class Laplace(likelihood):
         self.YYT = None
 
         self.old_Ki_f = None
-
-    def predictive_values(self, mu, var, full_cov):
-        if full_cov:
-            raise NotImplementedError("Cannot make correlated predictions\
-                    with an Laplace likelihood")
-        return self.noise_model.predictive_values(mu, var)
-
-    def log_predictive_density(self, y_test, mu_star, var_star):
-        """
-        Calculation of the log predictive density
-
-        .. math:
-            p(y_{*}|D) = p(y_{*}|f_{*})p(f_{*}|\mu_{*}\\sigma^{2}_{*})
-
-        :param y_test: test observations (y_{*})
-        :type y_test: (Nx1) array
-        :param mu_star: predictive mean of gaussian p(f_{*}|mu_{*}, var_{*})
-        :type mu_star: (Nx1) array
-        :param var_star: predictive variance of gaussian p(f_{*}|mu_{*}, var_{*})
-        :type var_star: (Nx1) array
-        """
-        return self.noise_model.log_predictive_density(y_test, mu_star, var_star)
-
-    def _get_params(self):
-        return np.asarray(self.noise_model._get_params())
-
-    def _get_param_names(self):
-        return self.noise_model._get_param_names()
-
-    def _set_params(self, p):
-        return self.noise_model._set_params(p)
+#Remove from here    
+#    def predictive_values(self, mu, var, full_cov,**noise_args):
+#        if full_cov:
+#            raise NotImplementedError("Cannot make correlated predictions\
+#                    with an Laplace likelihood")
+#        return self.noise_model.predictive_values(mu, var)
+#
+#    def log_predictive_density(self, y_test, mu_star, var_star):
+#        #TODO remove, this is defined in the upper class
+#        """
+#        Calculation of the log predictive density
+#
+#        .. math:
+#            p(y_{*}|D) = p(y_{*}|f_{*})p(f_{*}|\mu_{*}\\sigma^{2}_{*})
+#
+#        :param y_test: test observations (y_{*})
+#        :type y_test: (Nx1) array
+#        :param mu_star: predictive mean of gaussian p(f_{*}|mu_{*}, var_{*})
+#        :type mu_star: (Nx1) array
+#        :param var_star: predictive variance of gaussian p(f_{*}|mu_{*}, var_{*})
+#        :type var_star: (Nx1) array
+#        """
+#        return self.noise_model.log_predictive_density(y_test, mu_star, var_star)
+#
+#    def _get_params(self):
+#        return np.asarray(self.noise_model._get_params())
+#
+#    def _get_param_names(self):
+#        return self.noise_model._get_param_names()
+#
+#    def _set_params(self, p):
+#        return self.noise_model._set_params(p)
+#Remove up to this point
 
     def _shared_gradients_components(self):
         d3lik_d3fhat = self.noise_model.d3logpdf_df3(self.f_hat, self.data, extra_data=self.extra_data)
