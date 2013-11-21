@@ -1,10 +1,11 @@
 import numpy as np
 from scipy import stats
 from ..util.linalg import pdinv,mdot,jitchol,chol_inv,DSYR,tdot,dtrtrs
-from likelihood import likelihood
+from likelihood import Likelihood
+import noise_models
 
-class EP(likelihood):
-    def __init__(self,data,noise_model):
+class EP(Likelihood):
+    def __init__(self,data,noise_model,normalize,offset,scale):
         """
         Expectation Propagation
 
@@ -14,11 +15,13 @@ class EP(likelihood):
         :type noise_model: A GPy noise model
 
         """
-        self.noise_model = noise_model
-        self.data = data
-        self.num_data, self.output_dim = self.data.shape
-        self.is_heteroscedastic = True
-        self.num_params = 0
+        super(EP, self).__init__(data,noise_model,normalize,offset,scale)
+
+        if isinstance(self.noise_model,noise_models.bernoulli_noise.Bernoulli):
+            #NOTE Ideally this transformation would be inside match_moment function, but it's here for speed reasons.
+            self.T = np.where(self.data == 0, -1, 1)
+        else:
+            self.T = self.data.copy()
 
         #Initial values - Likelihood approximation parameters:
         #p(y|f) = t(f|tau_tilde,v_tilde)
@@ -34,8 +37,7 @@ class EP(likelihood):
         self.V = self.precision * self.Y
         self.VVT_factor = self.V
         self.trYYT = 0.
-
-        super(EP, self).__init__()
+        self.is_heteroscedastic = True
 
     def restart(self):
         self.tau_tilde = np.zeros(self.num_data)
@@ -49,42 +51,43 @@ class EP(likelihood):
         self.VVT_factor = self.V
         self.trYYT = 0.
 
-    def predictive_values(self,mu,var,full_cov,**noise_args):
-        if full_cov:
-            raise NotImplementedError, "Cannot make correlated predictions with an EP likelihood"
-        return self.noise_model.predictive_values(mu,var,**noise_args)
+#    def predictive_values(self,mu,var,full_cov,**noise_args):
+#        if full_cov:
+#            raise NotImplementedError, "Cannot make correlated predictions with an EP likelihood"
+#        return self.noise_model.predictive_values(mu,var,**noise_args)
+#
+#    def log_predictive_density(self, y_test, mu_star, var_star):
+#        #TODO remove, this is defined in the upper class
+#        """
+#        Calculation of the log predictive density
+#
+#        .. math:
+#            p(y_{*}|D) = p(y_{*}|f_{*})p(f_{*}|\mu_{*}\\sigma^{2}_{*})
+#
+#        :param y_test: test observations (y_{*})
+#        :type y_test: (Nx1) array
+#        :param mu_star: predictive mean of gaussian p(f_{*}|mu_{*}, var_{*})
+#        :type mu_star: (Nx1) array
+#        :param var_star: predictive variance of gaussian p(f_{*}|mu_{*}, var_{*})
+#        :type var_star: (Nx1) array
+#        """
+#        return self.noise_model.log_predictive_density(y_test, mu_star, var_star)
 
-    def log_predictive_density(self, y_test, mu_star, var_star):
-        """
-        Calculation of the log predictive density
+#    def _get_params(self):
+#        #return np.zeros(0)
+#        return self.noise_model._get_params()
 
-        .. math:
-            p(y_{*}|D) = p(y_{*}|f_{*})p(f_{*}|\mu_{*}\\sigma^{2}_{*})
+#    def _get_param_names(self):
+#        #return []
+#        return self.noise_model._get_param_names()
 
-        :param y_test: test observations (y_{*})
-        :type y_test: (Nx1) array
-        :param mu_star: predictive mean of gaussian p(f_{*}|mu_{*}, var_{*})
-        :type mu_star: (Nx1) array
-        :param var_star: predictive variance of gaussian p(f_{*}|mu_{*}, var_{*})
-        :type var_star: (Nx1) array
-        """
-        return self.noise_model.log_predictive_density(y_test, mu_star, var_star)
+#    def _set_params(self,p):
+#        #pass # TODO: the EP likelihood might want to take some parameters...
+#        self.noise_model._set_params(p)
 
-    def _get_params(self):
-        #return np.zeros(0)
-        return self.noise_model._get_params()
-
-    def _get_param_names(self):
-        #return []
-        return self.noise_model._get_param_names()
-
-    def _set_params(self,p):
-        #pass # TODO: the EP likelihood might want to take some parameters...
-        self.noise_model._set_params(p)
-
-    def _gradients(self,partial):
-        #return np.zeros(0) # TODO: the EP likelihood might want to take some parameters...
-        return self.noise_model._gradients(partial)
+#    def _gradients(self,partial):
+#        #return np.zeros(0) # TODO: the EP likelihood might want to take some parameters...
+#        return self.noise_model._gradients(partial)
 
     def _compute_GP_variables(self):
         #Variables to be called from GP
@@ -149,7 +152,7 @@ class EP(likelihood):
                 self.tau_[i] = 1./Sigma[i,i] - self.eta*self.tau_tilde[i]
                 self.v_[i] = mu[i]/Sigma[i,i] - self.eta*self.v_tilde[i]
                 #Marginal moments
-                self.Z_hat[i], mu_hat[i], sigma2_hat[i] = self.noise_model.moments_match(self.data[i],self.tau_[i],self.v_[i])
+                self.Z_hat[i], mu_hat[i], sigma2_hat[i] = self.noise_model.moments_match(self.T[i],self.tau_[i],self.v_[i])
                 #Site parameters update
                 Delta_tau = self.delta/self.eta*(1./sigma2_hat[i] - 1./Sigma[i,i])
                 Delta_v = self.delta/self.eta*(mu_hat[i]/sigma2_hat[i] - mu[i]/Sigma[i,i])
@@ -248,7 +251,7 @@ class EP(likelihood):
                 self.tau_[i] = 1./Sigma_diag[i] - self.eta*self.tau_tilde[i]
                 self.v_[i] = mu[i]/Sigma_diag[i] - self.eta*self.v_tilde[i]
                 #Marginal moments
-                self.Z_hat[i], mu_hat[i], sigma2_hat[i] = self.noise_model.moments_match(self.data[i],self.tau_[i],self.v_[i])
+                self.Z_hat[i], mu_hat[i], sigma2_hat[i] = self.noise_model.moments_match(self.T[i],self.tau_[i],self.v_[i])
                 #Site parameters update
                 Delta_tau = self.delta/self.eta*(1./sigma2_hat[i] - 1./Sigma_diag[i])
                 Delta_v = self.delta/self.eta*(mu_hat[i]/sigma2_hat[i] - mu[i]/Sigma_diag[i])
@@ -351,7 +354,7 @@ class EP(likelihood):
                 self.tau_[i] = 1./Sigma_diag[i] - self.eta*self.tau_tilde[i]
                 self.v_[i] = mu[i]/Sigma_diag[i] - self.eta*self.v_tilde[i]
                 #Marginal moments
-                self.Z_hat[i], mu_hat[i], sigma2_hat[i] = self.noise_model.moments_match(self.data[i],self.tau_[i],self.v_[i])
+                self.Z_hat[i], mu_hat[i], sigma2_hat[i] = self.noise_model.moments_match(self.T[i],self.tau_[i],self.v_[i])
                 #Site parameters update
                 Delta_tau = self.delta/self.eta*(1./sigma2_hat[i] - 1./Sigma_diag[i])
                 Delta_v = self.delta/self.eta*(mu_hat[i]/sigma2_hat[i] - mu[i]/Sigma_diag[i])
