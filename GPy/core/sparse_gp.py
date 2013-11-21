@@ -5,7 +5,7 @@ import numpy as np
 import pylab as pb
 from ..util.linalg import mdot, jitchol, tdot, symmetrify, backsub_both_sides, chol_inv, dtrtrs, dpotrs, dpotri
 from scipy import linalg
-from ..likelihoods import Gaussian, EP,EP_Mixed_Noise
+#from ..likelihoods import Gaussian, EP,EP_Mixed_Noise
 from gp_base import GPBase
 
 class SparseGP(GPBase):
@@ -204,19 +204,16 @@ class SparseGP(GPBase):
         For a Gaussian likelihood, no iteration is required:
         this function does nothing
         """
-        if not isinstance(self.likelihood, Gaussian): # Updates not needed for Gaussian likelihood
-            self.likelihood.restart()
-            if self.has_uncertain_inputs:
-                Lmi = chol_inv(self._Lm)
-                Kmmi = tdot(Lmi.T)
-                diag_tr_psi2Kmmi = np.array([np.trace(psi2_Kmmi) for psi2_Kmmi in np.dot(self.psi2, Kmmi)])
+        self.likelihood.restart()
+        if self.has_uncertain_inputs:
+            Lmi = chol_inv(self._Lm)
+            Kmmi = tdot(Lmi.T)
+            diag_tr_psi2Kmmi = np.array([np.trace(psi2_Kmmi) for psi2_Kmmi in np.dot(self.psi2, Kmmi)])
 
-                self.likelihood.fit_FITC(self.Kmm, self.psi1.T, diag_tr_psi2Kmmi, **kwargs) # This uses the fit_FITC code, but does not perfomr a FITC-EP.#TODO solve potential confusion
-                # raise NotImplementedError, "EP approximation not implemented for uncertain inputs"
-            else:
-                self.likelihood.fit_DTC(self.Kmm, self.psi1.T, **kwargs)
-                # self.likelihood.fit_FITC(self.Kmm,self.psi1,self.psi0)
-                self._set_params(self._get_params()) # update the GP
+            self.likelihood.fit_FITC(self.Kmm, self.psi1.T, diag_tr_psi2Kmmi, **kwargs) # This uses the fit_FITC code, but does not perfomr a FITC-EP.#TODO solve potential confusion
+        else:
+            self.likelihood.fit_DTC(self.Kmm, self.psi1.T, **kwargs)
+        self._set_params(self._get_params()) # update the GP
 
     def _log_likelihood_gradients(self):
         return np.hstack((self.dL_dZ().flatten(), self.dL_dtheta(), self.likelihood._gradients(partial=self.partial_for_likelihood)))
@@ -467,5 +464,3 @@ class SparseGP(GPBase):
         self.num_inducing = state.pop()
         self.Z = state.pop()
         GPBase.setstate(self, state)
-
-
