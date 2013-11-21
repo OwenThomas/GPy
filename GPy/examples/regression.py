@@ -297,8 +297,9 @@ def toy_poisson_rbf_1d_laplace(optimizer='bfgs', max_nb_eval_optim=100):
     f_true = np.random.multivariate_normal(np.zeros(x_len), GPy.kern.rbf(1).K(X))
     Y = np.array([np.random.poisson(np.exp(f)) for f in f_true])[:,None]
 
-    noise_model = GPy.likelihoods.poisson()
-    likelihood = GPy.likelihoods.Laplace(Y,noise_model)
+    #noise_model = GPy.likelihoods.poisson()
+    #likelihood = GPy.likelihoods.Laplace(Y,noise_model)
+    likelihood = GPy.likelihoods.likelihood_constructors.poisson(Y)
 
     # create simple GP Model
     m = GPy.models.GPRegression(X, Y, likelihood=likelihood)
