@@ -1,9 +1,9 @@
 import numpy as np
-from likelihood import likelihood
+from likelihood import Likelihood
 from ..util.linalg import jitchol
 
-
-class Gaussian(likelihood):
+#NOTE this file is not needed anymore
+class Gaussian(Likelihood):
     """
     Likelihood class for doing Expectation propagation
 
