@@ -23,46 +23,33 @@ class Bernoulli(NoiseDistribution):
     def __init__(self,gp_link=None,analytical_mean=False,analytical_variance=False):
         super(Bernoulli, self).__init__(gp_link,analytical_mean,analytical_variance)
 
-    def _preprocess_values(self,Y):
+    def check_data(self,data):
         """
-        Check if the values of the observations correspond to the values
-        assumed by the likelihood function.
-
-        ..Note:: Binary classification algorithm works better with classes {-1,1}
+        Checks if data values are appropiate for the noise distribution
         """
-        Y_prep = Y.copy()
-        Y1 = Y[Y.flatten()==1].size
-        Y2 = Y[Y.flatten()==0].size
-        assert Y1 + Y2 == Y.size, 'Bernoulli likelihood is meant to be used only with outputs in {0,1}.'
-        Y_prep[Y.flatten() == 0] = -1
-        return Y_prep
+        aux = [v in (0,1) for v in np.unique(data)]
+        assert np.all(aux), "Bad values for Bernouilli observations (0,1)"
 
-    def _moments_match_analytical(self,data_i,tau_i,v_i):
+    def _moments_match_analytical(self,obs,tau_i,v_i):
         """
         Moments match of the marginal approximation in EP algorithm
 
-        :param i: number of observation (int)
+        :param data_i: number of observation (int)
         :param tau_i: precision of the cavity distribution (float)
         :param v_i: mean/variance of the cavity distribution (float)
         """
-        if data_i == 1:
-            sign = 1.
-        elif data_i == 0:
-            sign = -1
-        else:
-            raise ValueError("bad value for Bernouilli observation (0,1)")
         if isinstance(self.gp_link,gp_transformations.Probit):
-            z = sign*v_i/np.sqrt(tau_i**2 + tau_i)
+            z = obs*v_i/np.sqrt(tau_i**2 + tau_i)
             Z_hat = std_norm_cdf(z)
             phi = std_norm_pdf(z)
-            mu_hat = v_i/tau_i + sign*phi/(Z_hat*np.sqrt(tau_i**2 + tau_i))
+            mu_hat = v_i/tau_i + obs*phi/(Z_hat*np.sqrt(tau_i**2 + tau_i))
             sigma2_hat = 1./tau_i - (phi/((tau_i**2+tau_i)*Z_hat))*(z+phi/Z_hat)
 
         elif isinstance(self.gp_link,gp_transformations.Heaviside):
-            a = sign*v_i/np.sqrt(tau_i)
+            a = obs*v_i/np.sqrt(tau_i)
             Z_hat = std_norm_cdf(a)
             N = std_norm_pdf(a)
-            mu_hat = v_i/tau_i + sign*N/Z_hat/np.sqrt(tau_i)
+            mu_hat = v_i/tau_i + obs*N/Z_hat/np.sqrt(tau_i)
             sigma2_hat = (1. - a*N/Z_hat - np.square(N/Z_hat))/tau_i
             if np.any(np.isnan([Z_hat, mu_hat, sigma2_hat])):
                 stop
