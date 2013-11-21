@@ -85,8 +85,9 @@ def student_t_approx():
     edited_real_sd = initial_var_guess
 
     print "Clean student t, rasm"
-    t_distribution = GPy.likelihoods.noise_model_constructors.student_t(deg_free=deg_free, sigma2=edited_real_sd)
-    stu_t_likelihood = GPy.likelihoods.Laplace(Y.copy(), t_distribution)
+    #t_distribution = GPy.likelihoods.noise_model_constructors.student_t(deg_free=deg_free, sigma2=edited_real_sd)
+    #stu_t_likelihood = GPy.likelihoods.Laplace(Y.copy(), t_distribution)
+    stu_t_likelihood = GPy.likelihoods.likelihood_constructors.student_t(Y.copy(),deg_free=deg_free, sigma2=edited_real_sd)
     m = GPy.models.GPRegression(X, Y.copy(), kernel6, likelihood=stu_t_likelihood)
     m.ensure_default_constraints()
     m.constrain_positive('t_noise')
@@ -102,8 +103,9 @@ def student_t_approx():
     plt.title('Student-t rasm clean')
 
     print "Corrupt student t, rasm"
-    t_distribution = GPy.likelihoods.noise_model_constructors.student_t(deg_free=deg_free, sigma2=edited_real_sd)
-    corrupt_stu_t_likelihood = GPy.likelihoods.Laplace(Yc.copy(), t_distribution)
+    #t_distribution = GPy.likelihoods.noise_model_constructors.student_t(deg_free=deg_free, sigma2=edited_real_sd)
+    #corrupt_stu_t_likelihood = GPy.likelihoods.Laplace(Yc.copy(), t_distribution)
+    corrupt_stu_t_likelihood = GPy.likelihoods.likelihood_constructors.student_t(Yc.copy(),deg_free=deg_free, sigma2=edited_real_sd)
     m = GPy.models.GPRegression(X, Yc.copy(), kernel4, likelihood=corrupt_stu_t_likelihood)
     m.ensure_default_constraints()
     m.constrain_positive('t_noise')
@@ -137,7 +139,8 @@ def boston_example():
     Y = Y-Y.mean()
     Y = Y/Y.std()
     num_folds = 10
-    kf = KFold(len(Y), n_folds=num_folds, indices=True)
+    #kf = KFold(len(Y), n_folds=num_folds, indices=True)
+    kf = KFold(len(Y), k=num_folds, indices=True)
     num_models = len(degrees_freedoms) + 3 #3 for baseline, gaussian, gaussian laplace approx
     score_folds = np.zeros((num_models, num_folds))
     pred_density = score_folds.copy()
@@ -181,8 +184,10 @@ def boston_example():
 
         print "Gaussian Laplace GP"
         N, D = Y_train.shape
-        g_distribution = GPy.likelihoods.noise_model_constructors.gaussian(variance=noise, N=N, D=D)
-        g_likelihood = GPy.likelihoods.Laplace(Y_train.copy(), g_distribution)
+        #g_distribution = GPy.likelihoods.noise_model_constructors.gaussian(variance=noise, N=N, D=D)
+        #g_likelihood = GPy.likelihoods.Laplace(Y_train.copy(), g_distribution)
+        g_likelihood = GPy.likelihoods.likelihood_constructors._gaussian(Y_train.copy(),approximation='Laplace',variance=noise)
+
         mg = GPy.models.GPRegression(X_train.copy(), Y_train.copy(), kernel=kernelstu.copy(), likelihood=g_likelihood)
         mg.ensure_default_constraints()
         mg.constrain_positive('noise_variance')
@@ -208,8 +213,9 @@ def boston_example():
         for stu_num, df in enumerate(degrees_freedoms):
             #Student T
             print "Student-T GP {}df".format(df)
-            t_distribution = GPy.likelihoods.noise_model_constructors.student_t(deg_free=df, sigma2=noise)
-            stu_t_likelihood = GPy.likelihoods.Laplace(Y_train.copy(), t_distribution)
+            #t_distribution = GPy.likelihoods.noise_model_constructors.student_t(deg_free=df, sigma2=noise)
+            #stu_t_likelihood = GPy.likelihoods.Laplace(Y_train.copy(), t_distribution)
+            stu_t_likelihood = GPy.likelihoods.likelihood_constructors.student_t(Y_train.copy(),deg_free=df,sigma2=noise)
             mstu_t = GPy.models.GPRegression(X_train.copy(), Y_train.copy(), kernel=kernelstu.copy(), likelihood=stu_t_likelihood)
             mstu_t.ensure_default_constraints()
             mstu_t.constrain_fixed('white', 1e-5)
@@ -275,6 +281,7 @@ def boston_example():
     return mstu_t
 
 def precipitation_example():
+    #FIXME
     import sklearn
     from sklearn.cross_validation import KFold
     data = datasets.boston_housing()
@@ -286,7 +293,8 @@ def precipitation_example():
     Y = Y/Y.std()
     import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
     num_folds = 10
-    kf = KFold(len(Y), n_folds=num_folds, indices=True)
+    #kf = KFold(len(Y), n_folds=num_folds, indices=True)
+    kf = KFold(len(Y), k=num_folds, indices=True)
     score_folds = np.zeros((4, num_folds))
     def rmse(Y, Ystar):
         return np.sqrt(np.mean((Y-Ystar)**2))
